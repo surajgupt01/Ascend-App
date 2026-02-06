@@ -8,6 +8,7 @@ import Nav from "../components/TopNav";
 export default function TabsLayout() {
   return (
     <LinearGradient
+
       colors={[
         "#FFDAD3",
         "#FFDAD3",
@@ -30,16 +31,18 @@ export default function TabsLayout() {
         0, 0.0667, 0.1333, 0.2, 0.2667, 0.3333, 0.4, 0.4667, 0.5333, 0.6,
         0.6667, 0.7333, 0.8, 0.8667, 0.9333, 1,
       ]}
+      style={{ flex: 1 }}
     >
-      <Nav />
 
-      <View style={styles.container}>
-        <View style={styles.content}>
-          <Slot />
+        <Nav />
+
+        <View style={styles.container}>
+          <View style={styles.content}>
+            <Slot />
+          </View>
+          <NavBar />
         </View>
 
-        <NavBar />
-      </View>
     </LinearGradient>
   );
 }
@@ -50,6 +53,6 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    overflow: "visible", 
+    overflow: "visible",
   },
 });

@@ -2,6 +2,7 @@ import { View, TouchableOpacity, Image, Text, FlatList } from "react-native";
 import Trophy from "./Icons/Trophy";
 import ChartBar from "./Icons/Chartbar";
 import { router } from "expo-router";
+import { SafeAreaView } from "react-native-safe-area-context";
 export default function Nav() {
   const subSections: string[] = [
     "Bookmarked",
@@ -19,11 +20,12 @@ export default function Nav() {
     "Tech & Science",
   ];
   return (
-    <View>
-      <View className="flex-row p-[16px] justify-between items-center bg-transparent top-[20px]">
+    <SafeAreaView edges={["top"]} className="">
+      <View className="flex-row p-[16px] justify-between items-center bg-transparent ">
         <Image
           source={require("../../assets/images/icon-v2.png")}
           className="w-[28px] h-[28px] rounded-[6.13px]"
+          style={{ width: 28, height: 28, borderRadius: 6 }}
         />
 
         <TouchableOpacity
@@ -61,7 +63,7 @@ export default function Nav() {
           </View>
         )}
         keyExtractor={(item) => item}
-      />
-    </View>
+      /> 
+    </SafeAreaView>
   );
 }
