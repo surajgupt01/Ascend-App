@@ -1,6 +1,6 @@
 // import { Shadow } from "@shopify/react-native-skia";
 import React, { useState } from "react";
-import { View, Text, TouchableOpacity, Dimensions, Share } from "react-native";
+import { View, Text, TouchableOpacity, Dimensions } from "react-native";
 import { CurveType, LineChart, yAxisSides } from "react-native-gifted-charts";
 import Bookmark from "../Icons/Bookmark";
 import ShareIcon from "../Icons/Share";
