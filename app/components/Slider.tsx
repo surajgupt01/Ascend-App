@@ -1,11 +1,9 @@
 import { LinearGradient } from "expo-linear-gradient";
-import React, { useState } from "react";
-import { Platform, StyleSheet, Text, useWindowDimensions, View } from "react-native";
-import { Gesture, GestureDetector } from "react-native-gesture-handler";
+import React, { useEffect, useRef, useState } from "react";
+import { PanResponder, Platform, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import Animated, {
-  runOnJS,
   useAnimatedStyle,
-  useSharedValue,
+  useSharedValue
 } from "react-native-reanimated";
 
 
@@ -42,47 +40,58 @@ export default function LeverageSlider({
   const trackColor = type === "long" ? "#22C55E" : "#E45D3D";
 
   // Shared values for animation
-  const translateX = useSharedValue(
-    ((initialLeverage - MIN_LEVERAGE) / (MAX_LEVERAGE - MIN_LEVERAGE)) *
-    SLIDER_WIDTH
-  );
-  const savedTranslateX = useSharedValue(0);
+  const initialPosition = ((initialLeverage - MIN_LEVERAGE) / (MAX_LEVERAGE - MIN_LEVERAGE)) * SLIDER_WIDTH;
+  const translateX = useSharedValue(initialPosition);
+  const startPosition = useRef(0);
 
   // Update leverage with callback
-  const updateLeverage = (value: number) => {
-    setLeverage(value);
-    onLeverageChange?.(value);
+  const updateLeverage = (position: number) => {
+    const rawLeverage =
+      MIN_LEVERAGE +
+      (position / SLIDER_WIDTH) * (MAX_LEVERAGE - MIN_LEVERAGE);
+
+    let steppedLeverage = MIN_LEVERAGE;
+    if (rawLeverage <= 50) {
+      steppedLeverage = Math.round(rawLeverage);
+    } else if (rawLeverage <= 200) {
+      steppedLeverage = Math.round(rawLeverage / 5) * 5;
+    } else {
+      steppedLeverage = Math.round(rawLeverage / 10) * 10;
+    }
+
+    setLeverage(steppedLeverage);
+    onLeverageChange?.(steppedLeverage);
   };
 
-  // Pan gesture handler
-  const panGesture = Gesture.Pan()
-    .onBegin(() => {
-      savedTranslateX.value = translateX.value;
+  // Handle screen size changes - recalculate position based on current leverage
+  useEffect(() => {
+    const newPosition = ((leverage - MIN_LEVERAGE) / (MAX_LEVERAGE - MIN_LEVERAGE)) * SLIDER_WIDTH;
+    translateX.value = newPosition;
+  }, [SLIDER_WIDTH]);
+
+  // PanResponder for drag gestures
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onStartShouldSetPanResponderCapture: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponderCapture: () => true,
+
+      onPanResponderGrant: () => {
+        startPosition.current = translateX.value;
+      },
+
+      onPanResponderMove: (_, gestureState) => {
+        let newPosition = startPosition.current + gestureState.dx;
+        newPosition = Math.max(0, Math.min(newPosition, SLIDER_WIDTH));
+        translateX.value = newPosition;
+        updateLeverage(newPosition);
+      },
+
+      onPanResponderRelease: () => {
+      },
     })
-    .onUpdate((event) => {
-      const newValue = savedTranslateX.value + event.translationX;
-      const clampedValue = Math.max(0, Math.min(newValue, SLIDER_WIDTH));
-      translateX.value = clampedValue;
-
-      // Calculate leverage with stepped values
-      const rawLeverage =
-        MIN_LEVERAGE +
-        (clampedValue / SLIDER_WIDTH) * (MAX_LEVERAGE - MIN_LEVERAGE);
-
-      let steppedLeverage = MIN_LEVERAGE;
-      if (rawLeverage <= 50) {
-        steppedLeverage = Math.round(rawLeverage);
-      } else if (rawLeverage <= 200) {
-        steppedLeverage = Math.round(rawLeverage / 5) * 5;
-      } else {
-        steppedLeverage = Math.round(rawLeverage / 10) * 10;
-      }
-
-      runOnJS(updateLeverage)(steppedLeverage);
-    })
-    .onEnd(() => {
-      savedTranslateX.value = translateX.value;
-    });
+  ).current;
 
   // Animated styles
   const handleAnimatedStyle = useAnimatedStyle(() => ({
@@ -100,7 +109,10 @@ export default function LeverageSlider({
 
         <View style={styles.sliderWrapper}>
           {/* Track with gradient */}
-          <View style={[styles.trackContainer, { width: SLIDER_WIDTH }]}>
+          <View
+            style={[styles.trackContainer, { width: SLIDER_WIDTH }]}
+            {...panResponder.panHandlers}
+          >
             <LinearGradient
               colors={colors as any}
               start={{ x: 0, y: 0 }}
@@ -124,10 +136,8 @@ export default function LeverageSlider({
                 />
               ))}
             </LinearGradient>
-          </View>
 
-          {/* Draggable Handle */}
-          <GestureDetector gesture={panGesture}>
+            {/* Draggable Handle */}
             <Animated.View
               style={[
                 styles.handleContainer,
@@ -137,7 +147,7 @@ export default function LeverageSlider({
             >
               <View style={[styles.handle, { backgroundColor: trackColor }]} />
             </Animated.View>
-          </GestureDetector>
+          </View>
 
           {/* Badge */}
           <View style={styles.badgeWrapper}>
@@ -163,7 +173,9 @@ const styles = StyleSheet.create({
   container: {
     width: "100%",
     maxWidth: 600,
-    paddingHorizontal: 20,
+    paddingLeft: 0,
+    paddingRight: 20,
+    marginLeft: -16,
   },
   title: {
     fontSize: 14,
@@ -180,14 +192,13 @@ const styles = StyleSheet.create({
   trackContainer: {
     position: "relative",
     height: TRACK_HEIGHT,
-    marginLeft: HANDLE_SIZE / 2,
     marginRight: 8,
   },
   track: {
     height: "100%",
     borderRadius: 12,
     position: "relative",
-    overflow: "hidden",
+    overflow: "visible",
   },
   fill: {
     position: "absolute",
@@ -206,8 +217,8 @@ const styles = StyleSheet.create({
   },
   handleContainer: {
     position: "absolute",
-    left: HANDLE_SIZE / 2,
-    top: (60 - HANDLE_HEIGHT) / 2,
+    left: -HANDLE_SIZE / 2,
+    top: (TRACK_HEIGHT - HANDLE_HEIGHT) / 2,
     width: HANDLE_SIZE,
     height: HANDLE_HEIGHT,
     borderRadius: 14,
